@@ -1,0 +1,6 @@
+comment = 'function_overloading:  Created by pgrx'
+default_version = '@CARGO_VERSION@'
+module_pathname = '$libdir/function_overloading'
+relocatable = false
+superuser = true
+trusted = false
