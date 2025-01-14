@@ -7,6 +7,33 @@ fn hello_function_overloading() -> &'static str {
     "Hello, function_overloading"
 }
 
+#[pg_extern]
+fn add(a: i32, b: i32) -> i32 {
+    a+b
+}
+
+#[pg_extern(sql= "
+        CREATE FUNCTION add(REAL,REAL)
+        RETURNS REAL
+        AS 'MODULE_PATHNAME', 'add_real'
+        LANGUAGE C STRICT;
+    ")
+]
+fn add_real(a: f32, b: f32) -> f32 {
+    a+b
+}
+
+#[pg_extern(sql= "
+        CREATE FUNCTION add(TEXT,TEXT)
+        RETURNS TEXT
+        AS 'MODULE_PATHNAME', 'add_str'
+        LANGUAGE C STRICT;
+    ")
+]
+fn add_str(a: &'static str, b: &'static str) -> &'static str {
+    format!("{a}{b}")
+}
+
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
 mod tests {
