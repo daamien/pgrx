@@ -2,10 +2,16 @@ use pgrx::prelude::*;
 
 ::pgrx::pg_module_magic!();
 
-#[pg_extern]
-fn hello_function_overloading() -> &'static str {
-    "Hello, function_overloading"
-}
+///
+/// Create a function named `add` for 3 different types (INT, REAL, TEXT)
+/// each version will be linked to a sepatate Rust function
+///
+/// |      Rust                    |        SQL                |
+/// |------------------------------|---------------------------|
+/// | add(i32,i32)                 | add(INT,INT)              |
+/// | add_real(f32,f32)            | add(REAL,REAL)            |
+/// | add_string(String,String)    | add(TEXT,TEXT)            |
+///
 
 #[pg_extern]
 fn add(a: i32, b: i32) -> i32 {
@@ -15,7 +21,7 @@ fn add(a: i32, b: i32) -> i32 {
 #[pg_extern(sql= "
         CREATE FUNCTION add(REAL,REAL)
         RETURNS REAL
-        AS 'MODULE_PATHNAME', 'add_real'
+        AS 'MODULE_PATHNAME', 'add_real_wrapper'
         LANGUAGE C STRICT;
     ")
 ]
@@ -26,13 +32,39 @@ fn add_real(a: f32, b: f32) -> f32 {
 #[pg_extern(sql= "
         CREATE FUNCTION add(TEXT,TEXT)
         RETURNS TEXT
-        AS 'MODULE_PATHNAME', 'add_str'
+        AS 'MODULE_PATHNAME', 'add_string_wrapper'
         LANGUAGE C STRICT;
     ")
 ]
-fn add_str(a: &'static str, b: &'static str) -> &'static str {
+fn add_string(a: String, b: String) -> String {
     format!("{a}{b}")
 }
+
+
+///
+/// Rust does not support default function arguments, but Postgres does
+///
+/// Again we create 2 different Rust functions linked to the same Postgres
+/// function.
+///
+
+#[pg_extern]
+fn strip(val: String, character: Option<char>) -> String {
+    val.replace(character.unwrap_or(' '),"")
+}
+
+#[pg_extern(sql= "
+        CREATE FUNCTION strip(TEXT)
+        RETURNS TEXT
+        AS 'MODULE_PATHNAME', 'strip_none_wrapper'
+        LANGUAGE C STRICT;
+    ")
+]
+fn strip_none(val: String) -> String {
+    strip(val,None)
+}
+
+
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
@@ -40,8 +72,8 @@ mod tests {
     use pgrx::prelude::*;
 
     #[pg_test]
-    fn test_hello_function_overloading() {
-        assert_eq!("Hello, function_overloading", crate::hello_function_overloading());
+    fn test_add() {
+        assert_eq!(3, crate::add(1,2));
     }
 
 }
